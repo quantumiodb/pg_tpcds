@@ -4,41 +4,45 @@ CREATE FUNCTION dsdgen_internal(
 ) RETURNS INT AS 'MODULE_PATHNAME',
 'dsdgen_internal' LANGUAGE C IMMUTABLE STRICT;
 
+CREATE FUNCTION tpcds_async_submit(IN SQL TEXT, OUT cid INT) RETURNS INT AS 'MODULE_PATHNAME',
+'tpcds_async_submit' LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION tpcds_async_consum(IN conn INT, OUT row_count INT) RETURNS INT AS 'MODULE_PATHNAME',
+'tpcds_async_consum' LANGUAGE C IMMUTABLE STRICT;
+
 CREATE FUNCTION dsdgen(sf INT) RETURNS TABLE(tab TEXT, row_count INT) AS $$
 DECLARE
     rec RECORD;
-    rc RECORD;
+    rc INT;
     query_text TEXT;
 BEGIN
-    CREATE TEMP TABLE temp_conn_table(conn text);
+    CREATE TEMP TABLE temp_cid_table(cid INT, c_name TEXT, c_status INT);
+
     FOR rec IN SELECT table_name, status, child FROM tpcds.tpcds_tables LOOP
         -- skip child tables
         IF rec.status <> 1 THEN
             query_text := format('SELECT * FROM dsdgen_internal(%s, %L)', sf, rec.table_name);
-            PERFORM dblink_connect(rec.table_name, '');
-            PERFORM dblink_send_query(rec.table_name, query_text) as int;
-            INSERT INTO temp_conn_table VALUES (rec.table_name);
+            INSERT INTO temp_cid_table SELECT cid, rec.table_name, rec.status FROM tpcds_async_submit(query_text);
         END IF;
     END LOOP;
 
-    for rec in SELECT conn FROM temp_conn_table LOOP
-        for rc in select * from  dblink_get_result(rec.conn) x(a int) loop
-            row_count := rc.a;
-            tab := rec.conn;
-            RETURN NEXT;
-        end loop;
-        PERFORM dblink_disconnect(rec.conn);
-    end loop;
-    drop table temp_conn_table;
+    FOR rec IN SELECT cid, c_name, c_status FROM temp_cid_table LOOP
+        SELECT tpcds_async_consum(rec.cid) INTO rc;
+        row_count := rc;
+        tab := rec.c_name;
+        RETURN NEXT;
+    END LOOP;
+
+    DROP TABLE temp_cid_table;
 
     FOR rec IN SELECT table_name, status FROM tpcds.tpcds_tables LOOP
         EXECUTE 'ANALYZE ' || rec.table_name;
         IF rec.status = 1 THEN
-            EXECUTE 'select count(*) from' || rec.table_name INTO row_count;
+            EXECUTE 'SELECT count(*) FROM ' || rec.table_name INTO row_count;
             tab := rec.table_name;
-            return next;    
-        end IF;
-    end LOOP;
+            RETURN NEXT;
+        END IF;
+    END LOOP;
 END;
 $$ LANGUAGE plpgsql;
 

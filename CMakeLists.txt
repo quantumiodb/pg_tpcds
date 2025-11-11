@@ -11,6 +11,9 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
 find_package(PostgreSQL REQUIRED)
 
+# runtime lib dir for libpq
+set(CMAKE_INSTALL_RPATH ${PostgreSQL_LIBRARY_DIRS})
+
 # clang-format
 add_custom_target(format
   COMMAND git diff --name-only --diff-filter=d --cached '*.cpp' '*.h' | xargs clang-format -i
@@ -49,13 +52,12 @@ add_postgresql_extension(
   VERSION 1.0
   SOURCES src/pg_tpcds.cpp
   SCRIPTS src/pg_tpcds--1.0.sql
-  REQUIRES dblink
 )
 
-target_link_libraries(pg_tpcds tpcds)
+target_link_libraries(pg_tpcds tpcds pq)
 
 set(TPCDS_CURR_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/tpcds)
-set(TPCDS_INSTALL_DIR ${PostgreSQL_EXTENSION_DIR}/src/tpcds)
+set(TPCDS_INSTALL_DIR ${PostgreSQL_EXTENSION_DIR}/tpcds)
 
 install(
   DIRECTORY
