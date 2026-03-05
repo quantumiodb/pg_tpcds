@@ -283,6 +283,17 @@ int TPCDSWrapper::CollectAnswers() {
       "WHERE c.relname = 'date_dim'");
   bool is_replicated = (!dist_rows.empty() && dist_rows[0] == "r");
   auto ans_dir = src_dir / "answers" / (is_replicated ? "sf1_replicated" : "sf1");
+
+  // Skip if answer files already exist
+  if (std::filesystem::exists(ans_dir)) {
+    int existing = 0;
+    for (auto &e : std::filesystem::directory_iterator(ans_dir)) {
+      if (e.path().extension() == ".ans") existing++;
+    }
+    if (existing >= TPCDS_QUERIES_COUNT)
+      return 0;
+  }
+
   std::filesystem::create_directories(ans_dir);
 
   // Use planner (optimizer=off) for deterministic results
@@ -295,13 +306,18 @@ int TPCDSWrapper::CollectAnswers() {
     auto qpath = extension_dir / "queries" / qname;
     if (!std::filesystem::exists(qpath)) continue;
 
+    char aname[16];
+    snprintf(aname, sizeof(aname), "%02d.ans", qid);
+    auto apath = ans_dir / aname;
+
+    // Skip if this answer file already exists
+    if (std::filesystem::exists(apath)) { count++; continue; }
+
     std::ifstream qfile(qpath);
     std::string sql((std::istreambuf_iterator<char>(qfile)), std::istreambuf_iterator<char>());
     auto rows = executor.execute_and_capture(sql);
 
-    char aname[16];
-    snprintf(aname, sizeof(aname), "%02d.ans", qid);
-    std::ofstream out(ans_dir / aname);
+    std::ofstream out(apath);
     for (const auto &row : rows)
       out << row << '\n';
     out.close();
