@@ -250,11 +250,10 @@ tpcds_runner_result *TPCDSWrapper::RunTPCDS(int qid) {
     actual_rows = std::move(er.rows);
   }  // ~Executor → SPI_finish()
 
-  // Build answer file path (source tree, not installed)
+  // Build answer file path
   char aname[16];
   snprintf(aname, sizeof(aname), "%02d.ans", qid);
-  auto ans_dir = is_replicated ? "sf1_replicated" : "sf1";
-  auto answer_path = std::filesystem::path(__FILE__).parent_path() / "answers" / ans_dir / aname;
+  auto answer_path = std::filesystem::path(TPCDS_ANSWERS_DIR) / (is_replicated ? "replicated" : "hash") / aname;
 
   // Validate against expected answer set
   if (!std::filesystem::exists(answer_path)) {
@@ -272,7 +271,6 @@ tpcds_runner_result *TPCDSWrapper::RunTPCDS(int qid) {
 
 int TPCDSWrapper::CollectAnswers() {
   const std::filesystem::path extension_dir = get_extension_external_directory();
-  auto src_dir = std::filesystem::path(__FILE__).parent_path();
 
   Executor executor;
 
@@ -282,7 +280,7 @@ int TPCDSWrapper::CollectAnswers() {
       "JOIN pg_class c ON dp.localoid = c.oid "
       "WHERE c.relname = 'date_dim'");
   bool is_replicated = (!dist_rows.empty() && dist_rows[0] == "r");
-  auto ans_dir = src_dir / "answers" / (is_replicated ? "sf1_replicated" : "sf1");
+  auto ans_dir = std::filesystem::path(TPCDS_ANSWERS_DIR) / (is_replicated ? "replicated" : "hash");
 
   // Skip if answer files already exist
   if (std::filesystem::exists(ans_dir)) {

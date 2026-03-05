@@ -59,6 +59,12 @@ target_link_libraries(pg_tpcds tpcds pq)
 set(TPCDS_CURR_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/tpcds)
 set(TPCDS_INSTALL_DIR ${PostgreSQL_EXTENSION_DIR}/tpcds)
 
+# Answer files directory — override with -DTPCDS_ANSWERS_DIR=... at cmake time
+if(NOT DEFINED TPCDS_ANSWERS_DIR)
+  set(TPCDS_ANSWERS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/answers)
+endif()
+target_compile_definitions(tpcds PRIVATE TPCDS_ANSWERS_DIR="${TPCDS_ANSWERS_DIR}")
+
 install(
   DIRECTORY
     ${TPCDS_CURR_DIR}/schema
