@@ -1,84 +1,115 @@
-## TPC-DS FOR POSTGRES
+## pg_tpcds - TPC-DS for Apache Cloudberry / PostgreSQL
 
-A plug-and-play postgres extension for testing tpcds, inspired by [duckdb](https://github.com/duckdb/duckdb.git) and [hyrise](https://github.com/hyrise/hyrise.git), to avoid the cumbersome configuration in tpcds. Only need to install the extension, and then you can run the test.
+A plug-and-play extension for TPC-DS benchmarking. Inspired by [duckdb](https://github.com/duckdb/duckdb.git) and [hyrise](https://github.com/hyrise/hyrise.git), it eliminates the cumbersome TPC-DS setup — install the extension and start benchmarking immediately.
 
-### REQUIREMENTS
+Supports **Apache Cloudberry (MPP)** distributed architecture: data is properly distributed across segments via hash distribution.
 
-- PostgreSQL
-    - tested only pg 17 currently, need more test
-- gcc 13 or higher
+### Requirements
 
-### SETUP
+- Apache Cloudberry (PostgreSQL 14 kernel) or PostgreSQL
+- CMake 3.12+
+- C++17 compiler (GCC 7+ or Clang 5+)
 
-make sure you have installed the postgres and the `pg_config` is in your PATH.
+### Build & Install
 
-```
-git clone https://github.com/asky/pg_tpcds.git
-git submodule update
-cd pg_tpcds
+Make sure `pg_config` is in your PATH.
+
+```bash
+cd contrib/pg_tpcds
 cmake -Bbuild
 cmake --build build --target install
 ```
 
-### BASIC USAGE
+### Quick Start
 
 ```sql
--- create extension pg_tpcds;
-create extension pg_tpcds;
+-- Install the extension (automatically creates schema and all 24 TPC-DS tables)
+CREATE EXTENSION pg_tpcds;
 
--- generate data set for scale factor 1
-select * from dsdgen(1);
+-- Generate data for scale factor 1
+SELECT * FROM dsdgen(1);
           tab           | row_count
 ------------------------+-----------
- call_center            |         6
+ promotion              |       300
+ ship_mode              |        20
+ warehouse              |         5
  catalog_page           |     11718
- catalog_sales          |   1441548
+ household_demographics |      7200
+ inventory              |  11745000
+ reason                 |        35
+ store                  |        12
  customer               |    100000
  customer_address       |     50000
- customer_demographics  |   1920800
- date_dim               |     73049
- household_demographics |      7200
- income_band            |        20
- inventory              |  11745000
- item                   |     18000
- promotion              |       300
- reason                 |        35
- ship_mode              |        20
- store                  |        12
- store_sales            |   2880404
- time_dim               |     86400
- warehouse              |         5
- web_page               |        60
  web_sales              |    719384
+ date_dim               |     73049
+ time_dim               |     86400
  web_site               |        30
-(21 rows)
-
-Time: 55490.768 ms (00:55.491)
-
--- get all queries
-select * from tpcds_queries();
--- get query by id, from 1 to 99
-select query from tpcds_queries(1); \gset
-
--- and exec it
-:query
-
--- cleanup all tables
-select tpcds_cleanup();
-
--- drop extension pg_tpcds will auto remove all tables and functions
-drop extension pg_tpcds;
-
+ call_center            |         6
+ income_band            |        20
+ store_sales            |   2880404
+ web_page               |        60
+ catalog_sales          |   1441548
+ customer_demographics  |   1920800
+ item                   |     18000
+ catalog_returns        |    144067
+ web_returns            |     71654
+ store_returns          |    287867
+(24 rows)
 ```
 
-### CUSTOMIZATION
+### Running TPC-DS Queries
 
-* 99 SQL statements have been provided here in advance. you can modify the SQL statement before installing the extension,  the file located at `src/tpcds/queries`.
-* Standard table creation statements are provided here for your configuration. The file is located at `src/tpcds/schema`.
-   * You can directly modify the table creation statements, such as specifying primary keys.
-   * Alternatively, you can configure index creation statements in the file `src/post_prepare.sql`, which will be invoked after table creation
+```sql
+-- Run all 99 queries and show benchmark results
+SELECT * FROM tpcds;
 
+ Qid  | Stable(ms)  | Current(ms) | Diff(%) | Result
+------+-------------+-------------+---------+--------
+  01  |      250.59 |      251.74 |   +0.46 | true
+  02  |     1398.46 |     1525.93 |   +9.11 | true
+  ...
+  99  |      996.87 |     1023.06 |   +2.63 | true
+ ---- | ----------- | ----------- | ------- |
+ Sum  |   143260.37 |   139667.93 |   -2.51 |
 
+-- Run specific queries by ID
+SELECT * FROM tpcds(1, 2, 3);
 
+-- Run a single query directly
+SELECT query FROM tpcds_queries(1); \gset
+:query
+```
 
+**Column descriptions:**
 
+| Column | Description |
+|---|---|
+| Stable(ms) | Best historical duration (from `tpcds.tpcds_query_stats`) |
+| Current(ms) | Duration of the current run |
+| Diff(%) | Percentage change: `(Current - Stable) / Stable * 100` |
+| Result | Whether the query executed successfully |
+
+- On the **first run**, `Stable(ms)` is empty — results are recorded as the baseline.
+- On **subsequent runs**, if the current duration is faster, it replaces the stored baseline.
+
+### Other Functions
+
+```sql
+-- List all 99 TPC-DS queries
+SELECT * FROM tpcds_queries();
+
+-- Get a specific query by ID (1-99)
+SELECT * FROM tpcds_queries(42);
+
+-- Truncate all TPC-DS table data
+SELECT tpcds_cleanup();
+
+-- Remove the extension (drops all tables, functions, and schema)
+DROP EXTENSION pg_tpcds CASCADE;
+```
+
+### Customization
+
+- **Queries**: 99 SQL statements are provided in `src/tpcds/queries/`. Modify them before building to customize the benchmark.
+- **Schema**: Table DDL files are in `src/tpcds/schema/`. You can add primary keys, indexes, or change distribution keys.
+- **Post-setup**: Add index creation or other post-load statements to `src/post_prepare.sql`, which runs after table creation.
