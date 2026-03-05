@@ -1,38 +1,27 @@
-drop schema if exists tpcds cascade;
-create schema tpcds;
-
-create table tpcds.tpcds_query_stats(
-  ec_qid int ,
-  ec_duration double precision,
-  ec_recoed_time timestamp
-);
-
-create table tpcds.tpcds_tables(
-  table_name varchar(100),
-  status int, 
-  child varchar(100));
-
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('call_center', 0);
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('catalog_page', 0);
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('catalog_returns', 1);
-INSERT INTO tpcds.tpcds_tables(table_name, status, child) VALUES ('catalog_sales', 2, 'catalog_returns');
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('customer', 0);
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('customer_address', 0);
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('customer_demographics', 0);
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('date_dim', 0);
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('household_demographics', 0);
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('income_band', 0);
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('inventory', 0);
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('item', 0);
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('promotion', 0);
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('reason', 0);
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('ship_mode', 0);
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('store', 0);
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('store_returns', 1);
-INSERT INTO tpcds.tpcds_tables(table_name, status, child) VALUES ('store_sales', 2, 'store_returns');
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('time_dim', 0);
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('warehouse', 0);
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('web_page', 0);
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('web_returns', 1);
-INSERT INTO tpcds.tpcds_tables(table_name, status, child) VALUES ('web_sales', 2, 'web_returns');
-INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('web_site', 0);
+-- Drop data tables only (metadata tables are owned by the extension)
+DROP TABLE IF EXISTS call_center CASCADE;
+DROP TABLE IF EXISTS catalog_page CASCADE;
+DROP TABLE IF EXISTS catalog_returns CASCADE;
+DROP TABLE IF EXISTS catalog_sales CASCADE;
+DROP TABLE IF EXISTS customer CASCADE;
+DROP TABLE IF EXISTS customer_address CASCADE;
+DROP TABLE IF EXISTS customer_demographics CASCADE;
+DROP TABLE IF EXISTS date_dim CASCADE;
+DROP TABLE IF EXISTS household_demographics CASCADE;
+DROP TABLE IF EXISTS income_band CASCADE;
+DROP TABLE IF EXISTS inventory CASCADE;
+DROP TABLE IF EXISTS item CASCADE;
+DROP TABLE IF EXISTS promotion CASCADE;
+DROP TABLE IF EXISTS reason CASCADE;
+DROP TABLE IF EXISTS ship_mode CASCADE;
+DROP TABLE IF EXISTS store CASCADE;
+DROP TABLE IF EXISTS store_returns CASCADE;
+DROP TABLE IF EXISTS store_sales CASCADE;
+DROP TABLE IF EXISTS time_dim CASCADE;
+DROP TABLE IF EXISTS warehouse CASCADE;
+DROP TABLE IF EXISTS web_page CASCADE;
+DROP TABLE IF EXISTS web_returns CASCADE;
+DROP TABLE IF EXISTS web_sales CASCADE;
+DROP TABLE IF EXISTS web_site CASCADE;
+-- Clear query stats when switching distribution
+TRUNCATE tpcds.tpcds_query_stats;

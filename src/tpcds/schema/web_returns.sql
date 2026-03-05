@@ -23,4 +23,4 @@ create table web_returns(
 	wr_reversed_charge decimal(7,2),
 	wr_account_credit decimal(7,2),
 	wr_net_loss decimal(7,2)
-) DISTRIBUTED BY (wr_order_number,wr_item_sk);
+);

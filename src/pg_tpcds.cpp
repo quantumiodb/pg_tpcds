@@ -25,9 +25,9 @@ extern "C" {
 
 namespace tpcds {
 
-static bool tpcds_prepare() {
+static bool tpcds_prepare(const char* dist_mode) {
   try {
-    tpcds::TPCDSWrapper::CreateTPCDSSchema();
+    tpcds::TPCDSWrapper::CreateTPCDSSchema(dist_mode);
   } catch (const std::exception& e) {
     elog(ERROR, "TPC-DS Failed to prepare schema, get error: %s", e.what());
   }
@@ -62,6 +62,14 @@ static tpcds_runner_result* tpcds_runner(int qid) {
   }
 }
 
+static int tpcds_collect_answers() {
+  try {
+    return tpcds::TPCDSWrapper::CollectAnswers();
+  } catch (const std::exception& e) {
+    elog(ERROR, "TPC-DS Failed to collect answers, get error: %s", e.what());
+  }
+}
+
 }  // namespace tpcds
 
 extern "C" {
@@ -78,7 +86,8 @@ PG_MODULE_MAGIC;
 
 PG_FUNCTION_INFO_V1(tpcds_prepare);
 Datum tpcds_prepare(PG_FUNCTION_ARGS) {
-  bool result = tpcds::tpcds_prepare();
+  char* dist_mode = PG_ARGISNULL(0) ? (char*)"original" : text_to_cstring(PG_GETARG_TEXT_PP(0));
+  bool result = tpcds::tpcds_prepare(dist_mode);
 
   PG_RETURN_BOOL(result);
 }
@@ -134,6 +143,13 @@ Datum tpcds_runner(PG_FUNCTION_ARGS) {
   values[2] = BoolGetDatum(result->checked);
 
   PG_RETURN_DATUM(HeapTupleGetDatum(heap_form_tuple(tupdesc, values, nulls)));
+}
+
+PG_FUNCTION_INFO_V1(tpcds_collect_answers);
+
+Datum tpcds_collect_answers(PG_FUNCTION_ARGS) {
+  int count = tpcds::tpcds_collect_answers();
+  PG_RETURN_INT32(count);
 }
 
 PG_FUNCTION_INFO_V1(dsdgen_internal);

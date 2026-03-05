@@ -17,4 +17,4 @@ create table customer(
 	c_login varchar(13),
 	c_email_address varchar(50),
 	c_last_review_date_sk integer
-) DISTRIBUTED BY (c_customer_sk);
+);

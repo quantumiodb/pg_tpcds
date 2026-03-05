@@ -4,4 +4,4 @@ create table household_demographics(
 	hd_buy_potential varchar(15),
 	hd_dep_count integer,
 	hd_vehicle_count integer
-) DISTRIBUTED BY (hd_demo_sk);
+);

@@ -20,9 +20,11 @@ struct TPCDSWrapper {
   //! Gets the specified TPC-DS Query number as a string
   static const char* GetQuery(int query);
 
-  static void CreateTPCDSSchema();
+  static void CreateTPCDSSchema(const char* dist_mode = "original");
 
   static tpcds_runner_result* RunTPCDS(int qid);
+
+  static int CollectAnswers();
 };
 
 }  // namespace tpcds

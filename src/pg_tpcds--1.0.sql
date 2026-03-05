@@ -1,3 +1,44 @@
+-- Create metadata schema (owned by extension, persistent)
+CREATE SCHEMA tpcds;
+
+CREATE TABLE tpcds.tpcds_query_stats(
+  ec_qid int,
+  ec_duration double precision,
+  ec_recoed_time timestamp
+);
+
+CREATE TABLE tpcds.tpcds_tables(
+  table_name varchar(100),
+  status int,
+  child varchar(100)
+);
+
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('call_center', 0);
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('catalog_page', 0);
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('catalog_returns', 1);
+INSERT INTO tpcds.tpcds_tables(table_name, status, child) VALUES ('catalog_sales', 2, 'catalog_returns');
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('customer', 0);
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('customer_address', 0);
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('customer_demographics', 0);
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('date_dim', 0);
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('household_demographics', 0);
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('income_band', 0);
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('inventory', 0);
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('item', 0);
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('promotion', 0);
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('reason', 0);
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('ship_mode', 0);
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('store', 0);
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('store_returns', 1);
+INSERT INTO tpcds.tpcds_tables(table_name, status, child) VALUES ('store_sales', 2, 'store_returns');
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('time_dim', 0);
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('warehouse', 0);
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('web_page', 0);
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('web_returns', 1);
+INSERT INTO tpcds.tpcds_tables(table_name, status, child) VALUES ('web_sales', 2, 'web_returns');
+INSERT INTO tpcds.tpcds_tables(table_name, status) VALUES ('web_site', 0);
+
+-- C functions
 CREATE FUNCTION dsdgen_internal(
   IN sf INT,
   IN gentable TEXT
@@ -46,15 +87,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION tpcds_prepare() RETURNS BOOLEAN AS 'MODULE_PATHNAME',
-'tpcds_prepare' LANGUAGE C IMMUTABLE STRICT;
+CREATE FUNCTION tpcds_prepare(dist_mode TEXT DEFAULT 'original') RETURNS BOOLEAN AS 'MODULE_PATHNAME',
+'tpcds_prepare' LANGUAGE C IMMUTABLE;
+
+CREATE FUNCTION tpcds_collect_answers() RETURNS INT AS 'MODULE_PATHNAME',
+'tpcds_collect_answers' LANGUAGE C STRICT;
 
 CREATE FUNCTION tpcds_cleanup() RETURNS BOOLEAN AS $$
 DECLARE
     tbl TEXT;
 BEGIN
-    FOR tbl IN 
-        SELECT table_name 
+    FOR tbl IN
+        SELECT table_name
         FROM tpcds.tpcds_tables
     LOOP
         EXECUTE 'truncate ' || tbl;
@@ -132,7 +176,7 @@ BEGIN
 
         IF run_all THEN
             SELECT ret_id, new_duration, old_duration, ret_checked INTO run_record FROM tpcds_run_internal(i, true);
-        ELSE 
+        ELSE
             SELECT ret_id, new_duration, old_duration, ret_checked INTO run_record FROM tpcds_run_internal(queries[i]);
         END IF;
 
@@ -168,6 +212,3 @@ SELECT
   *
 FROM
   tpcds();
-
-SELECT
-  tpcds_prepare();

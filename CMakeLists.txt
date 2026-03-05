@@ -77,6 +77,8 @@ install(
   FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/pre_prepare.sql
     ${CMAKE_CURRENT_SOURCE_DIR}/src/post_prepare.sql
+    ${TPCDS_CURR_DIR}/distribution.txt
+    ${TPCDS_CURR_DIR}/distribution_original.txt
   DESTINATION
     ${TPCDS_INSTALL_DIR}
 )

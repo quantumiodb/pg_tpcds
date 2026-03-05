@@ -5,4 +5,4 @@ create table ship_mode(
 	sm_code varchar(10),
 	sm_carrier varchar(20),
 	sm_contract varchar(20)
-) DISTRIBUTED BY (sm_ship_mode_sk);
+);

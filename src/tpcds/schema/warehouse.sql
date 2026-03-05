@@ -13,4 +13,4 @@ create table warehouse(
 	w_zip varchar(10),
 	w_country varchar(20),
 	w_gmt_offset decimal(5,2)
-) DISTRIBUTED BY (w_warehouse_sk);
+);

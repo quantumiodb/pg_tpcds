@@ -33,4 +33,4 @@ create table web_sales(
 	ws_net_paid_inc_ship decimal(7,2),
 	ws_net_paid_inc_ship_tax decimal(7,2),
 	ws_net_profit decimal(7,2)
-) DISTRIBUTED BY (ws_item_sk,ws_order_number);
+);

@@ -15,6 +15,7 @@ extern "C" {
 #include <filesystem>
 #include <cstdio>
 #include <fstream>
+#include <map>
 #include <ranges>
 #include <stdexcept>
 #include <vector>
@@ -124,8 +125,52 @@ static std::vector<std::string> load_answer_file(const std::filesystem::path &pa
   return lines;
 }
 
-void TPCDSWrapper::CreateTPCDSSchema() {
+static std::map<std::string, std::string> load_distribution(const std::filesystem::path &path) {
+  std::map<std::string, std::string> dist;
+  if (!std::filesystem::exists(path)) return dist;
+  std::ifstream file(path);
+  std::string line;
+  while (std::getline(file, line)) {
+    if (line.empty()) continue;
+    auto p1 = line.find('|');
+    if (p1 == std::string::npos) continue;
+    auto p2 = line.find('|', p1 + 1);
+    if (p2 == std::string::npos) continue;
+    dist[line.substr(p1 + 1, p2 - p1 - 1)] = line.substr(p2 + 1);
+  }
+  return dist;
+}
+
+static std::string apply_distribution(const std::string &sql,
+                                      const std::map<std::string, std::string> &dist) {
+  // Extract table name from "CREATE TABLE table_name ("
+  auto pos = sql.find("CREATE TABLE");
+  if (pos == std::string::npos) pos = sql.find("create table");
+  if (pos == std::string::npos) return sql;
+
+  auto ns = pos + 13;
+  while (ns < sql.size() && sql[ns] == ' ') ns++;
+  auto ne = ns;
+  while (ne < sql.size() && sql[ne] != ' ' && sql[ne] != '(') ne++;
+
+  auto it = dist.find(sql.substr(ns, ne - ns));
+  if (it == dist.end()) return sql;
+
+  auto last = sql.rfind(");");
+  if (last == std::string::npos) return sql;
+
+  if (it->second == "REPLICATED")
+    return sql.substr(0, last) + ") DISTRIBUTED REPLICATED;";
+  else
+    return sql.substr(0, last) + ") DISTRIBUTED BY (" + it->second + ");";
+}
+
+void TPCDSWrapper::CreateTPCDSSchema(const char* dist_mode) {
   const std::filesystem::path extension_dir = get_extension_external_directory();
+
+  auto dist_file = (std::string(dist_mode) == "original")
+      ? "distribution_original.txt" : "distribution.txt";
+  auto dist = load_distribution(extension_dir / dist_file);
 
   Executor executor;
 
@@ -136,6 +181,8 @@ void TPCDSWrapper::CreateTPCDSSchema() {
     std::ranges::for_each(std::filesystem::directory_iterator(schema), [&](const auto &entry) {
       std::ifstream file(entry.path());
       std::string sql((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+      if (!dist.empty())
+        sql = apply_distribution(sql, dist);
       executor.execute(sql);
     });
   } else
@@ -182,22 +229,32 @@ tpcds_runner_result *TPCDSWrapper::RunTPCDS(int qid) {
     throw std::runtime_error("Queries file for qid: " + std::to_string(qid) + " does not exist");
   }
 
-  // Build answer file path (source tree, not installed)
-  char aname[16];
-  snprintf(aname, sizeof(aname), "%02d.ans", qid);
-  auto answer_path = std::filesystem::path(__FILE__).parent_path() / "answers" / "sf1" / aname;
-
   // Run query inside SPI scope; capture result rows before SPI_finish
   // destroys the SPI memory context.
   tpcds_runner_result tmp;
   tmp.qid = qid;
   std::vector<std::string> actual_rows;
+  bool is_replicated = false;
   {
     Executor executor;
+    // Detect distribution mode by checking date_dim's policy
+    auto dist_rows = executor.execute_and_capture(
+        "SELECT policytype FROM gp_distribution_policy dp "
+        "JOIN pg_class c ON dp.localoid = c.oid "
+        "WHERE c.relname = 'date_dim'");
+    if (!dist_rows.empty() && dist_rows[0] == "r")
+      is_replicated = true;
+
     auto er = exec_spec_capture(queries, executor);
     tmp.duration = er.duration;
     actual_rows = std::move(er.rows);
   }  // ~Executor → SPI_finish()
+
+  // Build answer file path (source tree, not installed)
+  char aname[16];
+  snprintf(aname, sizeof(aname), "%02d.ans", qid);
+  auto ans_dir = is_replicated ? "sf1_replicated" : "sf1";
+  auto answer_path = std::filesystem::path(__FILE__).parent_path() / "answers" / ans_dir / aname;
 
   // Validate against expected answer set
   if (!std::filesystem::exists(answer_path)) {
@@ -211,6 +268,48 @@ tpcds_runner_result *TPCDSWrapper::RunTPCDS(int qid) {
   auto *result = (tpcds_runner_result *)palloc(sizeof(tpcds_runner_result));
   *result = tmp;
   return result;
+}
+
+int TPCDSWrapper::CollectAnswers() {
+  const std::filesystem::path extension_dir = get_extension_external_directory();
+  auto src_dir = std::filesystem::path(__FILE__).parent_path();
+
+  Executor executor;
+
+  // Detect distribution mode
+  auto dist_rows = executor.execute_and_capture(
+      "SELECT policytype FROM gp_distribution_policy dp "
+      "JOIN pg_class c ON dp.localoid = c.oid "
+      "WHERE c.relname = 'date_dim'");
+  bool is_replicated = (!dist_rows.empty() && dist_rows[0] == "r");
+  auto ans_dir = src_dir / "answers" / (is_replicated ? "sf1_replicated" : "sf1");
+  std::filesystem::create_directories(ans_dir);
+
+  // Use planner (optimizer=off) for deterministic results
+  executor.execute("SET optimizer = off");
+
+  int count = 0;
+  for (int qid = 1; qid <= TPCDS_QUERIES_COUNT; qid++) {
+    char qname[16];
+    snprintf(qname, sizeof(qname), "%02d.sql", qid);
+    auto qpath = extension_dir / "queries" / qname;
+    if (!std::filesystem::exists(qpath)) continue;
+
+    std::ifstream qfile(qpath);
+    std::string sql((std::istreambuf_iterator<char>(qfile)), std::istreambuf_iterator<char>());
+    auto rows = executor.execute_and_capture(sql);
+
+    char aname[16];
+    snprintf(aname, sizeof(aname), "%02d.ans", qid);
+    std::ofstream out(ans_dir / aname);
+    for (const auto &row : rows)
+      out << row << '\n';
+    out.close();
+    count++;
+  }
+
+  executor.execute("RESET optimizer");
+  return count;
 }
 
 int TPCDSWrapper::DSDGen(int scale, char *table) {

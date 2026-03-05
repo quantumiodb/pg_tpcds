@@ -28,4 +28,4 @@ create table call_center(
 	cc_country varchar(20),
 	cc_gmt_offset decimal(5,2),
 	cc_tax_percentage decimal(5,2)
-) DISTRIBUTED BY (cc_call_center_sk);
+);

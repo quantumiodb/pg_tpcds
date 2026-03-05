@@ -19,4 +19,4 @@ create table store_returns(
 	sr_reversed_charge decimal(7,2),
 	sr_store_credit decimal(7,2),
 	sr_net_loss decimal(7,2)
-) DISTRIBUTED BY (sr_item_sk,sr_ticket_number);
+);

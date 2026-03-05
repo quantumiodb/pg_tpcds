@@ -19,4 +19,4 @@ create table item(
 	i_container varchar(10),
 	i_manager_id integer,
 	i_product_name varchar(50)
-) DISTRIBUTED BY (i_item_sk);
+);

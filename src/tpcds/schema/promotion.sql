@@ -18,4 +18,4 @@ create table promotion(
 	p_channel_details varchar(100),
 	p_purpose varchar(15),
 	p_discount_active varchar(1)
-) DISTRIBUTED BY (p_promo_sk);
+);

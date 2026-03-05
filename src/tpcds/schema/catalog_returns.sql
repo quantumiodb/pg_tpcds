@@ -26,4 +26,4 @@ create table catalog_returns(
 	cr_reversed_charge decimal(7,2),
 	cr_store_credit decimal(7,2),
 	cr_net_loss decimal(7,2)
-) DISTRIBUTED BY (cr_item_sk,cr_order_number);
+);

@@ -23,4 +23,4 @@ create table web_site(
 	web_country varchar(20),
 	web_gmt_offset decimal(5,2),
 	web_tax_percentage decimal(5,2)
-) DISTRIBUTED BY (web_site_sk);
+);
