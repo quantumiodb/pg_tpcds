@@ -8,4 +8,4 @@ create table catalog_page(
 	cp_catalog_page_number integer,
 	cp_description varchar(100),
 	cp_type varchar(100)
-);
+) DISTRIBUTED BY (cp_catalog_page_sk);

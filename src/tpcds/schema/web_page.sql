@@ -11,4 +11,4 @@ create table web_page(
 	wp_link_count integer,
 	wp_image_count integer,
 	wp_max_ad_count integer
-);
+) DISTRIBUTED BY (wp_web_page_sk);

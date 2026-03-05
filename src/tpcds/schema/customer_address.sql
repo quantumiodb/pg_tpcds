@@ -12,4 +12,4 @@ create table customer_address(
 	ca_country varchar(20),
 	ca_gmt_offset decimal(5,2),
 	ca_location_type varchar(20)
-);
+) DISTRIBUTED BY (ca_address_sk);

@@ -26,4 +26,4 @@ create table date_dim(
 	d_current_month varchar(1),
 	d_current_quarter varchar(1),
 	d_current_year varchar(1)
-);
+) DISTRIBUTED BY (d_date_sk);

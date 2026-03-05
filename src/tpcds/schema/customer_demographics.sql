@@ -8,4 +8,4 @@ create table customer_demographics(
 	cd_dep_count integer,
 	cd_dep_employed_count integer,
 	cd_dep_college_count integer
-);
+) DISTRIBUTED BY (cd_demo_sk);

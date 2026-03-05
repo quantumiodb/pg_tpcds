@@ -9,4 +9,4 @@ create table time_dim(
 	t_shift varchar(20),
 	t_sub_shift varchar(20),
 	t_meal_time varchar(20)
-);
+) DISTRIBUTED BY (t_time_sk);

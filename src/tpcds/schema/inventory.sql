@@ -3,4 +3,4 @@ create table inventory(
 	inv_item_sk integer not null,
 	inv_warehouse_sk integer not null,
 	inv_quantity_on_hand integer
-);
+) DISTRIBUTED BY (inv_date_sk,inv_item_sk,inv_warehouse_sk);
