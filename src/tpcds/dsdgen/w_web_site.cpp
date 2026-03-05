@@ -185,9 +185,9 @@ int mk_w_web_site(void *info_arr, ds_key_t index) {
       .addItem(r->web_address.city)
       .addItem(r->web_address.county)
       .addItem(r->web_address.state)
-      .addItem(std::format("{:05d}", r->web_address.zip).data())
+      .addItem(([&]{ static char b[8]; snprintf(b,sizeof(b),"%05d",r->web_address.zip); return b; })())
       .addItem(r->web_address.country)
-      .addItem(std::format("{}", r->web_address.gmt_offset).data())
+      .addItem(std::to_string(r->web_address.gmt_offset).c_str())
       .addItemDecimal(r->web_tax_percentage)
       .end();
 

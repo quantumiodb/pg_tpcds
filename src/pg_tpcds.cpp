@@ -1,3 +1,4 @@
+#pragma GCC visibility push(default)
 
 extern "C" {
 #include <postgres.h>
@@ -8,7 +9,6 @@ extern "C" {
 #include <executor/spi.h>
 #include <funcapi.h>
 #include <lib/stringinfo.h>
-#include <libpq/libpq-be-fe-helpers.h>
 #include <libpq/libpq-be.h>
 #include <libpq/pqformat.h>
 #include <miscadmin.h>
@@ -102,14 +102,14 @@ Datum tpcds_queries(PG_FUNCTION_ARGS) {
     while (qid < q_count) {
       const char* query = tpcds::tpcds_queries(++qid);
 
-      values[0] = qid;
+      values[0] = Int32GetDatum(qid);
       values[1] = CStringGetTextDatum(query);
 
       tuplestore_putvalues(rsinfo->setResult, rsinfo->setDesc, values, nulls);
     }
   } else {
     const char* query = tpcds::tpcds_queries(get_qid);
-    values[0] = get_qid;
+    values[0] = Int32GetDatum(get_qid);
     values[1] = CStringGetTextDatum(query);
     tuplestore_putvalues(rsinfo->setResult, rsinfo->setDesc, values, nulls);
   }
@@ -129,7 +129,7 @@ Datum tpcds_runner(PG_FUNCTION_ARGS) {
 
   tpcds::tpcds_runner_result* result = tpcds::tpcds_runner(qid);
 
-  values[0] = result->qid;
+  values[0] = Int32GetDatum(result->qid);
   values[1] = Float8GetDatum(result->duration);
   values[2] = BoolGetDatum(result->checked);
 
@@ -153,7 +153,7 @@ static PGconn* doConnect(void) {
   char connstr[1024];
   snprintf(connstr, sizeof(connstr), "dbname='%s' port=%d", get_database_name(MyDatabaseId), PostPortNumber);
 
-  conn = libpqsrv_connect(connstr, PG_WAIT_EXTENSION);
+  conn = PQconnectdb(connstr);
 
   /* check to see that the backend connection was successfully made */
   if (PQstatus(conn) == CONNECTION_BAD) {
@@ -184,7 +184,7 @@ Datum tpcds_async_submit(PG_FUNCTION_ARGS) {
   retval = PQsendQuery(conn, sql);
   if (retval != 1) {
     char* errmsg = pchomp(PQerrorMessage(conn));
-    libpqsrv_disconnect(conn);
+    PQfinish(conn);
     elog(ERROR, "could not send query cause: %s", errmsg);
   }
   while (remoteConnHash[i] && remoteConnHash[i]->used) {
@@ -251,17 +251,14 @@ Datum tpcds_async_consum(PG_FUNCTION_ARGS) {
         message_primary = pchomp(PQerrorMessage(conn));
       PQclear(res);
 
-      libpqsrv_disconnect(conn);
+      PQfinish(conn);
       remoteConnHash[cidx]->conn = NULL;
       remoteConnHash[cidx]->used = false;
 
       ereport(ERROR, (errcode(sqlstate),
                       (message_primary != NULL && message_primary[0] != '\0')
                           ? errmsg_internal("%s", message_primary)
-                          : errmsg("could not obtain message string for remote error"),
-                      message_detail ? errdetail_internal("%s", message_detail) : 0,
-                      message_hint ? errhint("%s", message_hint) : 0,
-                      message_context ? (errcontext("%s", message_context)) : 0));
+                          : errmsg("could not obtain message string for remote error")));
       /* ? how to free memory safely?, ereport(ERROR will jump direct, use a new memctx*/
       pfree(message_primary);
       pfree(message_detail);
@@ -270,7 +267,7 @@ Datum tpcds_async_consum(PG_FUNCTION_ARGS) {
     } else {
       int row_count = pg_strtoint32(PQgetvalue(res, 0, 0));
 
-      libpqsrv_disconnect(conn);
+      PQfinish(conn);
       remoteConnHash[cidx]->conn = NULL;
       remoteConnHash[cidx]->used = false;
 

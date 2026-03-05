@@ -7,10 +7,9 @@
 namespace tpcds {
 
 struct tpcds_runner_result {
-  bool is_new;
   int qid;
   double duration;
-  double checked;
+  bool checked;
 };
 
 struct TPCDSWrapper {

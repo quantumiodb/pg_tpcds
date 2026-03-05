@@ -88,9 +88,9 @@ int mk_w_warehouse(void *info_arr, ds_key_t index) {
       .addItem(r->w_address.city)
       .addItem(r->w_address.county)
       .addItem(r->w_address.state)
-      .addItem(std::format("{:05d}", r->w_address.zip).data())
+      .addItem(([&]{ static char b[8]; snprintf(b,sizeof(b),"%05d",r->w_address.zip); return b; })())
       .addItem(r->w_address.country)
-      .addItem(std::format("{}", r->w_address.gmt_offset).data())
+      .addItem(std::to_string(r->w_address.gmt_offset).c_str())
       .end();
   return 0;
 }

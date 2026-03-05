@@ -209,7 +209,7 @@ int mk_w_store(void *info_arr, ds_key_t index) {
       .addItem(r->address.city)
       .addItem(r->address.county)
       .addItem(r->address.state)
-      .addItem(std::format("{:05d}", r->address.zip).data())
+      .addItem(([&]{ static char b[8]; snprintf(b,sizeof(b),"%05d",r->address.zip); return b; })())
       .addItem(r->address.country)
       .addItem(std::to_string(r->address.gmt_offset).c_str())
       .addItemDecimal(r->dTaxPercentage)

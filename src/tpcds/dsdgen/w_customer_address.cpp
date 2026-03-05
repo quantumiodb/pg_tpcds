@@ -79,9 +79,9 @@ int mk_w_customer_address(void *info_arr, ds_key_t index) {
       .addItem(r->ca_address.city)
       .addItem(r->ca_address.county)
       .addItem(r->ca_address.state)
-      .addItem(std::format("{:05d}", r->ca_address.zip).data())
+      .addItem(([&]{ static char b[8]; snprintf(b,sizeof(b),"%05d",r->ca_address.zip); return b; })())
       .addItem(r->ca_address.country)
-      .addItem(std::format("{}", r->ca_address.gmt_offset).data())
+      .addItem(std::to_string(r->ca_address.gmt_offset).c_str())
       .addItem(r->ca_location_type)
       .end();
 

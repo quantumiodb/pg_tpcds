@@ -232,9 +232,9 @@ int mk_w_call_center(void *info_arr, ds_key_t index) {
       .addItem(r->cc_address.city)
       .addItem(r->cc_address.county)
       .addItem(r->cc_address.state)
-      .addItem(std::format("{:05d}", r->cc_address.zip).data())
+      .addItem(([&]{ static char b[8]; snprintf(b,sizeof(b),"%05d",r->cc_address.zip); return b; })())
       .addItem(r->cc_address.country)
-      .addItem(std::format("{}", r->cc_address.gmt_offset).data())
+      .addItem(std::to_string(r->cc_address.gmt_offset).c_str())
       .addItemDecimal(r->cc_tax_percentage)
       .end();
 
