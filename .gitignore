@@ -1,7 +1,7 @@
 build/
 src/tpcds/include/queries/
 src/tpcds/include/schema/
-
+src/tpcds/answers/
 # Object files
 *.o
 
